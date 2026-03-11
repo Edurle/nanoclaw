@@ -10,3 +10,6 @@
 // telegram
 
 // whatsapp
+
+// qqbot
+import './qqbot/index.js';

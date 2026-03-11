@@ -26,18 +26,46 @@ export const PROXY_BIND_HOST =
 function detectProxyBindHost(): string {
   if (os.platform() === 'darwin') return '127.0.0.1';
 
-  // WSL uses Docker Desktop (same VM routing as macOS) — loopback is correct.
-  // Check /proc filesystem, not env vars — WSL_DISTRO_NAME isn't set under systemd.
-  if (fs.existsSync('/proc/sys/fs/binfmt_misc/WSLInterop')) return '127.0.0.1';
+  // WSL + Docker Desktop: loopback is correct (VM routes traffic)
+  // WSL + Native Docker: need docker0 bridge IP
+  if (fs.existsSync('/proc/sys/fs/binfmt_misc/WSLInterop')) {
+    if (isDockerDesktop()) {
+      return '127.0.0.1';
+    }
+    // WSL + native Docker: use docker0 bridge IP
+    const bridgeIp = getDockerBridgeIp();
+    if (bridgeIp) return bridgeIp;
+  }
 
-  // Bare-metal Linux: bind to the docker0 bridge IP instead of 0.0.0.0
+  // Bare-metal Linux: bind to docker0 bridge IP instead of 0.0.0.0
+  const bridgeIp = getDockerBridgeIp();
+  if (bridgeIp) return bridgeIp;
+  return '0.0.0.0';
+}
+
+/** Check if Docker Desktop is being used (vs native Docker). */
+function isDockerDesktop(): boolean {
+  try {
+    const output = execSync('docker context ls --format "{{.Name}}"', {
+      encoding: 'utf-8',
+      timeout: 5000,
+    });
+    // Docker Desktop typically has 'desktop-linux' context
+    return output.includes('desktop-linux');
+  } catch {
+    return false;
+  }
+}
+
+/** Get the docker0 bridge IP address. */
+function getDockerBridgeIp(): string | null {
   const ifaces = os.networkInterfaces();
   const docker0 = ifaces['docker0'];
   if (docker0) {
     const ipv4 = docker0.find((a) => a.family === 'IPv4');
-    if (ipv4) return ipv4.address;
+    return ipv4?.address || null;
   }
-  return '0.0.0.0';
+  return null;
 }
 
 /** CLI args needed for the container to resolve the host gateway. */

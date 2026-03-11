@@ -389,9 +389,13 @@ async function runQuery(
     log(`Additional directories: ${extraDirs.join(', ')}`);
   }
 
+  // Model name configurable via environment variable (for debugging/compatibility)
+  const modelName = process.env.ANTHROPIC_MODEL || 'qwen3.5-plus';
+
   for await (const message of query({
     prompt: stream,
     options: {
+      model: modelName,
       cwd: '/workspace/group',
       additionalDirectories: extraDirs.length > 0 ? extraDirs : undefined,
       resume: sessionId,

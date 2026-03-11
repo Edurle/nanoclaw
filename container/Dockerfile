@@ -3,6 +3,10 @@
 
 FROM node:22-slim
 
+# Use Alibaba apt mirror for faster downloads in China
+RUN sed -i 's|http://deb.debian.org|http://mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources && \
+    sed -i 's|http://security.debian.org|http://mirrors.aliyun.com|g' /etc/apt/sources.list.d/debian.sources
+
 # Install system dependencies for Chromium
 RUN apt-get update && apt-get install -y \
     chromium \
